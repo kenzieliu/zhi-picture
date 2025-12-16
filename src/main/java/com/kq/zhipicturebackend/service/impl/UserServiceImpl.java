@@ -224,10 +224,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return queryWrapper;
     }
 
-//    @Override
-//    public boolean isAdmin(User user) {
-//        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
-//    }
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
+    }
 //
 //    // region ------- 以下代码为用户兑换会员功能 --------
 //
