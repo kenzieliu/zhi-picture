@@ -151,6 +151,7 @@ public abstract class PictureUploadTemplate {
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + uploadPath);
         uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
+//        uploadPictureResult.setPicName(FileUtil.getName(originalFilename));
         uploadPictureResult.setPicSize(FileUtil.size(file));
         uploadPictureResult.setPicWidth(picWidth);
         uploadPictureResult.setPicHeight(picHeight);
