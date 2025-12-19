@@ -1,25 +1,25 @@
 package com.kq.zhipicturebackend.service.impl;
 
-
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kq.zhipicturebackend.exception.BusinessException;
 import com.kq.zhipicturebackend.exception.ErrorCode;
 import com.kq.zhipicturebackend.exception.ThrowUtils;
-import com.kq.zhipicturebackend.manager.CosManager;
 import com.kq.zhipicturebackend.manager.FileManager;
 import com.kq.zhipicturebackend.manager.upload.FilePictureUpload;
 import com.kq.zhipicturebackend.manager.upload.PictureUploadTemplate;
 import com.kq.zhipicturebackend.manager.upload.UrlPictureUpload;
 import com.kq.zhipicturebackend.mapper.PictureMapper;
 import com.kq.zhipicturebackend.model.dto.file.UploadPictureResult;
-import com.kq.zhipicturebackend.model.dto.picture.*;
+import com.kq.zhipicturebackend.model.dto.picture.PictureQueryRequest;
+import com.kq.zhipicturebackend.model.dto.picture.PictureReviewRequest;
+import com.kq.zhipicturebackend.model.dto.picture.PictureUploadByBatchRequest;
+import com.kq.zhipicturebackend.model.dto.picture.PictureUploadRequest;
 import com.kq.zhipicturebackend.model.entity.Picture;
 import com.kq.zhipicturebackend.model.entity.User;
 import com.kq.zhipicturebackend.model.enums.PictureReviewStatusEnum;
@@ -32,9 +32,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -49,7 +46,7 @@ import java.util.stream.Collectors;
 /**
  * @author kenzieliu
  * @description 针对表【picture(图片)】的数据库操作Service实现
- * @createDate 2024-12-11 20:45:51
+ * @createDate 2025-12-11 20:45:51
  */
 @Slf4j
 @Service
@@ -67,10 +64,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private UrlPictureUpload urlPictureUpload;
-
-    @Autowired
-    private CosManager cosManager;
-
 
     @Override
     public void validPicture(Picture picture) {
@@ -109,8 +102,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         // 上传图片，得到图片信息
-        // 按照用户 id 划分目录 => 按照空间划分目录
-        String uploadPathPrefix = String.format("public/%s", loginUser.getId());;
+        // 按照用户 id 划分目录
+        String uploadPathPrefix = String.format("public/%s", loginUser.getId());
         // 根据 inputSource 的类型区分上传方式
         PictureUploadTemplate pictureUploadTemplate = filePictureUpload;
         if (inputSource instanceof String) {
@@ -120,7 +113,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 构造要入库的图片信息
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());
-        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         // 支持外层传递图片名称
         String picName = uploadPictureResult.getPicName();
         if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
@@ -132,7 +124,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setPicHeight(uploadPictureResult.getPicHeight());
         picture.setPicScale(uploadPictureResult.getPicScale());
         picture.setPicFormat(uploadPictureResult.getPicFormat());
-        picture.setPicColor(uploadPictureResult.getPicColor());
         picture.setUserId(loginUser.getId());
         // 补充审核参数
         this.fillReviewParams(picture, loginUser);
@@ -143,6 +134,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setId(pictureId);
             picture.setEditTime(new Date());
         }
+
+        boolean result = this.saveOrUpdate(picture);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败，数据库操作失败");
         return PictureVO.objToVo(picture);
     }
 
@@ -215,10 +209,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Integer reviewStatus = pictureQueryRequest.getReviewStatus();
         String reviewMessage = pictureQueryRequest.getReviewMessage();
         Long reviewerId = pictureQueryRequest.getReviewerId();
-        Long spaceId = pictureQueryRequest.getSpaceId();
-        Date startEditTime = pictureQueryRequest.getStartEditTime();
-        Date endEditTime = pictureQueryRequest.getEndEditTime();
-        boolean nullSpaceId = pictureQueryRequest.isNullSpaceId();
         String sortField = pictureQueryRequest.getSortField();
         String sortOrder = pictureQueryRequest.getSortOrder();
         // 从多字段中搜索
@@ -233,8 +223,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         queryWrapper.eq(ObjUtil.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjUtil.isNotEmpty(userId), "userId", userId);
-        queryWrapper.eq(ObjUtil.isNotEmpty(spaceId), "spaceId", spaceId);
-        queryWrapper.isNull(nullSpaceId, "spaceId");
         queryWrapper.like(StrUtil.isNotBlank(name), "name", name);
         queryWrapper.like(StrUtil.isNotBlank(introduction), "introduction", introduction);
         queryWrapper.like(StrUtil.isNotBlank(picFormat), "picFormat", picFormat);
@@ -246,10 +234,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.eq(ObjUtil.isNotEmpty(picScale), "picScale", picScale);
         queryWrapper.eq(ObjUtil.isNotEmpty(reviewStatus), "reviewStatus", reviewStatus);
         queryWrapper.eq(ObjUtil.isNotEmpty(reviewerId), "reviewerId", reviewerId);
-        // >= startEditTime
-        queryWrapper.ge(ObjUtil.isNotEmpty(startEditTime), "editTime", startEditTime);
-        // < endEditTime
-        queryWrapper.lt(ObjUtil.isNotEmpty(endEditTime), "editTime", endEditTime);
         // JSON 数组查询
         if (CollUtil.isNotEmpty(tags)) {
             /* and (tag like "%\"Java\"%" and like "%\"Python\"%") */
@@ -367,70 +351,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         return uploadCount;
     }
-
-    @Async
-    @Override
-    public void clearPictureFile(Picture oldPicture) {
-        // 判断该图片是否被多条记录使用
-        String pictureUrl = oldPicture.getUrl();
-        long count = this.lambdaQuery()
-                .eq(Picture::getUrl, pictureUrl)
-                .count();
-        // 有不止一条记录用到了该图片，不清理
-        if (count > 1) {
-            return;
-        }
-        // 删除图片
-        cosManager.deleteObject(pictureUrl);
-        // 删除缩略图
-        String thumbnailUrl = oldPicture.getThumbnailUrl();
-        if (StrUtil.isNotBlank(thumbnailUrl)) {
-            cosManager.deleteObject(thumbnailUrl);
-        }
-    }
-
-    @Override
-    public void deletePicture(long pictureId, User loginUser) {
-        ThrowUtils.throwIf(pictureId <= 0, ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
-        // 判断是否存在
-        Picture oldPicture = this.getById(pictureId);
-        ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 异步清理文件
-        this.clearPictureFile(oldPicture);
-    }
-
-    @Override
-    public void editPicture(PictureEditRequest pictureEditRequest, User loginUser) {
-        // 在此处将实体类和 DTO 进行转换
-        Picture picture = new Picture();
-        BeanUtils.copyProperties(pictureEditRequest, picture);
-        // 注意将 list 转为 string
-        picture.setTags(JSONUtil.toJsonStr(pictureEditRequest.getTags()));
-        // 设置编辑时间
-        picture.setEditTime(new Date());
-        // 数据校验
-        this.validPicture(picture);
-        // 判断是否存在
-        long id = pictureEditRequest.getId();
-        Picture oldPicture = this.getById(id);
-        ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 校验权限，已经改为使用注解鉴权
-//        checkPictureAuth(loginUser, oldPicture);
-        // 补充审核参数
-        this.fillReviewParams(picture, loginUser);
-        // 操作数据库
-        boolean result = this.updateById(picture);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-    }
 }
-
-
-
-
-
-
-
 
 
 

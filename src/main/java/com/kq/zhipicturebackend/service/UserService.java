@@ -1,10 +1,9 @@
 package com.kq.zhipicturebackend.service;
 
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.kq.zhipicturebackend.model.dto.user.UserQueryRequest;
 import com.kq.zhipicturebackend.model.entity.User;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.kq.zhipicturebackend.model.vo.LoginUserVO;
 import com.kq.zhipicturebackend.model.vo.UserVO;
 
@@ -14,7 +13,7 @@ import java.util.List;
 /**
  * @author kenzieliu
  * @description 针对表【user(用户)】的数据库操作Service
- * @createDate 2024-12-09 20:03:03
+ * @createDate 2025-12-09 20:03:03
  */
 public interface UserService extends IService<User> {
 
@@ -100,9 +99,4 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean isAdmin(User user);
-//
-//    /**
-//     * 用户兑换会员（会员码兑换）
-//     */
-//    boolean exchangeVip(User user, String vipCode);
 }

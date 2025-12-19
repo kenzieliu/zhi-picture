@@ -7,7 +7,6 @@
     <resultMap id="BaseResultMap" type="com.kq.zhipicturebackend.model.entity.Picture">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="url" column="url" jdbcType="VARCHAR"/>
-            <result property="thumbnailUrl" column="thumbnailUrl" jdbcType="VARCHAR"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>
             <result property="introduction" column="introduction" jdbcType="VARCHAR"/>
             <result property="category" column="category" jdbcType="VARCHAR"/>
@@ -17,9 +16,7 @@
             <result property="picHeight" column="picHeight" jdbcType="INTEGER"/>
             <result property="picScale" column="picScale" jdbcType="DOUBLE"/>
             <result property="picFormat" column="picFormat" jdbcType="VARCHAR"/>
-            <result property="picColor" column="picColor" jdbcType="VARCHAR"/>
             <result property="userId" column="userId" jdbcType="BIGINT"/>
-            <result property="spaceId" column="spaceId" jdbcType="BIGINT"/>
             <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
             <result property="editTime" column="editTime" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
@@ -31,10 +28,10 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,url,thumbnailUrl,name,
+        id,url,name,
         introduction,category,tags,
         picSize,picWidth,picHeight,
-        picScale,picFormat,userId,spaceId,
+        picScale,picFormat,userId,
         createTime,editTime,updateTime,
         isDelete,reviewStatus,reviewMessage,
         reviewerId,reviewTime
